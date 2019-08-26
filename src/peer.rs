@@ -45,10 +45,10 @@ impl<'a> std::io::Read for BytesDecoder<'a> {
 
 struct MsgCoder<'a>(&'a Printer);
 impl<'a> codec::Decoder for MsgCoder<'a> {
-	type Item = NetworkMessage;
+	type Item = Option<NetworkMessage>;
 	type Error = encode::Error;
 
-	fn decode(&mut self, bytes: &mut bytes::BytesMut) -> Result<Option<NetworkMessage>, encode::Error> {
+	fn decode(&mut self, bytes: &mut bytes::BytesMut) -> Result<Option<Option<NetworkMessage>>, encode::Error> {
 		let mut decoder = BytesDecoder {
 			buf: bytes,
 			pos: 0
@@ -57,7 +57,7 @@ impl<'a> codec::Decoder for MsgCoder<'a> {
 			Ok(res) => {
 				decoder.buf.advance(decoder.pos);
 				if res.magic == Network::Bitcoin.magic() {
-					Ok(Some(res.payload))
+					Ok(Some(Some(res.payload)))
 				} else {
 					Err(encode::Error::UnexpectedNetworkMagic {
 						expected: Network::Bitcoin.magic(),
@@ -72,7 +72,7 @@ impl<'a> codec::Decoder for MsgCoder<'a> {
 					//XXX(fixthese): self.0.add_line(format!("rust-bitcoin doesn't support {}!", msg), true);
 					if msg == "gnop" {
 						Err(e)
-					} else { Ok(None) }
+					} else { Ok(Some(None)) }
 				},
 				_ => {
 					self.0.add_line(format!("Error decoding message: {:?}", e), true);
@@ -148,7 +148,7 @@ macro_rules! try_write_small {
 
 pub struct Peer {}
 impl Peer {
-	pub fn new(addr: SocketAddr, tor_proxy: &SocketAddr, timeout: Duration, printer: &'static Printer) -> impl Future<Error=(), Item=(mpsc::Sender<NetworkMessage>, impl Stream<Item=NetworkMessage, Error=encode::Error>)> {
+	pub fn new(addr: SocketAddr, tor_proxy: &SocketAddr, timeout: Duration, printer: &'static Printer) -> impl Future<Error=(), Item=(mpsc::Sender<NetworkMessage>, impl Stream<Item=Option<NetworkMessage>, Error=encode::Error>)> {
 		let connect_timeout = Delay::new(Instant::now() + timeout.clone()).then(|_| {
 			future::err(std::io::Error::new(std::io::ErrorKind::TimedOut, "timeout reached"))
 		});
