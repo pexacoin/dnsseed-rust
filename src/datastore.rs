@@ -446,11 +446,13 @@ impl Store {
 			{
 				let mut rng = thread_rng();
 				for i in &[1u64, 4, 5, 8, 9, 12, 13, 1024, 1025, 1028, 1029, 1032, 1033, 1036, 1037] {
+					let mut tor_set: Vec<Ipv6Addr> = Vec::new();
 					let mut v6_set: Vec<Ipv6Addr> = Vec::new();
 					let mut v4_set: Vec<Ipv4Addr> = Vec::new();
 					macro_rules! add_addr { ($addr: expr) => {
 						match $addr.ip() {
 							IpAddr::V4(v4addr) => v4_set.push(v4addr),
+							IpAddr::V6(v6addr) if v6addr.octets()[..6] == [0xFD,0x87,0xD8,0x7E,0xEB,0x43][..] => tor_set.push(v6addr),
 							IpAddr::V6(v6addr) => v6_set.push(v6addr),
 						}
 					} }
@@ -510,15 +512,10 @@ impl Store {
 					}
 					asn_set.clear();
 					asn_set.insert(0);
-					let mut tor_count = 0;
-					for a in v6_set.iter().filter(|a| {
-								if a.octets()[..6] != [0xFD,0x87,0xD8,0x7E,0xEB,0x43][..] {
-									asn_set.insert(bgp_client.get_asn(IpAddr::V6(**a)))
-								} else {
-									tor_count += 1;
-									tor_count <= 2
-								}
-							}).choose_multiple(&mut rng, 12) {
+					for a in v6_set.iter().filter(|a| asn_set.insert(bgp_client.get_asn(IpAddr::V6(**a)))).choose_multiple(&mut rng, 10) {
+						dns_buff += &format!("x{:x}.dnsseed\tIN\tAAAA\t{}\n", i, a);
+					}
+					for a in tor_set.iter().choose_multiple(&mut rng, 2) {
 						dns_buff += &format!("x{:x}.dnsseed\tIN\tAAAA\t{}\n", i, a);
 					}
 				}
