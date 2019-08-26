@@ -37,6 +37,7 @@ static mut HEADER_MAP: Option<Box<Mutex<HashMap<sha256d::Hash, u64>>>> = None;
 static mut HEIGHT_MAP: Option<Box<Mutex<HashMap<u64, sha256d::Hash>>>> = None;
 static mut DATA_STORE: Option<Box<Store>> = None;
 static mut PRINTER: Option<Box<Printer>> = None;
+static mut TOR_PROXY: Option<SocketAddr> = None;
 pub static START_SHUTDOWN: AtomicBool = AtomicBool::new(false);
 static SCANNING: AtomicBool = AtomicBool::new(false);
 
@@ -77,7 +78,7 @@ pub fn scan_node(scan_time: Instant, node: SocketAddr, manual: bool) {
 	let peer = Delay::new(scan_time).then(move |_| {
 		printer.set_stat(Stat::NewConnection);
 		let timeout = store.get_u64(U64Setting::RunTimeout);
-		Peer::new(node.clone(), Duration::from_secs(timeout), printer)
+		Peer::new(node.clone(), unsafe { TOR_PROXY.as_ref().unwrap() }, Duration::from_secs(timeout), printer)
 	});
 	tokio::spawn(peer.and_then(move |(mut write, read)| {
 		TimeoutStream::new_timeout(read, scan_time + Duration::from_secs(store.get_u64(U64Setting::RunTimeout))).map_err(move |err| {
@@ -288,7 +289,7 @@ fn scan_net() {
 			scan_node(iter_time, node, false);
 			iter_time += per_iter_time;
 		}
-		Delay::new(cmp::max(iter_time, start_time + Duration::from_secs(1))).then(|_| {
+		Delay::new(cmp::max(iter_time, start_time + Duration::from_secs(1))).then(move |_| {
 			if !START_SHUTDOWN.load(Ordering::Relaxed) {
 				scan_net();
 			}
@@ -299,7 +300,7 @@ fn scan_net() {
 
 fn make_trusted_conn(trusted_sockaddr: SocketAddr, bgp_client: Arc<BGPClient>) {
 	let printer = unsafe { PRINTER.as_ref().unwrap() };
-	let trusted_peer = Peer::new(trusted_sockaddr.clone(), Duration::from_secs(600), printer);
+	let trusted_peer = Peer::new(trusted_sockaddr.clone(), unsafe { TOR_PROXY.as_ref().unwrap() }, Duration::from_secs(600), printer);
 	let bgp_reload = Arc::clone(&bgp_client);
 	tokio::spawn(trusted_peer.and_then(move |(mut trusted_write, trusted_read)| {
 		printer.add_line("Connected to local peer".to_string(), false);
@@ -408,8 +409,8 @@ fn make_trusted_conn(trusted_sockaddr: SocketAddr, bgp_client: Arc<BGPClient>) {
 }
 
 fn main() {
-	if env::args().len() != 4 {
-		println!("USAGE: dnsseed-rust datastore localPeerAddress bgp_peer");
+	if env::args().len() != 5 {
+		println!("USAGE: dnsseed-rust datastore localPeerAddress tor_proxy_addr bgp_peer");
 		return;
 	}
 
@@ -429,6 +430,10 @@ fn main() {
 		args.next();
 		let path = args.next().unwrap();
 		let trusted_sockaddr: SocketAddr = args.next().unwrap().parse().unwrap();
+
+		let tor_socks5_sockaddr: SocketAddr = args.next().unwrap().parse().unwrap();
+		unsafe { TOR_PROXY = Some(tor_socks5_sockaddr); }
+
 		let bgp_sockaddr: SocketAddr = args.next().unwrap().parse().unwrap();
 
 		Store::new(path).and_then(move |store| {
