@@ -66,9 +66,6 @@ impl Printer {
 					out.write_all(format!(
 							"\nCurrent connections open/in progress: {}\n", stats.connection_count).as_bytes()).expect("stdout broken?");
 					out.write_all(format!(
-							"Connections opened each second: {} (\"c x\" to change to x seconds)\n", store.get_u64(U64Setting::ConnsPerSec)
-							).as_bytes()).expect("stdout broken?");
-					out.write_all(format!(
 							"Current block count: {}\n", stats.header_count).as_bytes()).expect("stdout broken?");
 
 					out.write_all(format!(

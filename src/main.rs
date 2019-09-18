@@ -5,7 +5,7 @@ mod bgp_client;
 mod timeout_stream;
 mod datastore;
 
-use std::{cmp, env};
+use std::env;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{Ordering, AtomicBool};
@@ -279,17 +279,19 @@ fn scan_net() {
 		let printer = unsafe { PRINTER.as_ref().unwrap() };
 		let store = unsafe { DATA_STORE.as_ref().unwrap() };
 
+		let start_time = Instant::now();
 		let mut scan_nodes = store.get_next_scan_nodes();
 		printer.add_line(format!("Got {} addresses to scan", scan_nodes.len()), false);
-		let per_iter_time = Duration::from_millis(1000 / store.get_u64(U64Setting::ConnsPerSec));
-		let start_time = Instant::now();
-		let mut iter_time = start_time;
+		if !scan_nodes.is_empty() {
+			let per_iter_time = Duration::from_millis(datastore::SECS_PER_SCAN_RESULTS / scan_nodes.len() as u64);
+			let mut iter_time = start_time;
 
-		for node in scan_nodes.drain(..) {
-			scan_node(iter_time, node, false);
-			iter_time += per_iter_time;
+			for node in scan_nodes.drain(..) {
+				scan_node(iter_time, node, false);
+				iter_time += per_iter_time;
+			}
 		}
-		Delay::new(cmp::max(iter_time, start_time + Duration::from_secs(1))).then(move |_| {
+		Delay::new(start_time + Duration::from_secs(datastore::SECS_PER_SCAN_RESULTS)).then(move |_| {
 			if !START_SHUTDOWN.load(Ordering::Relaxed) {
 				scan_net();
 			}

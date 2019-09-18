@@ -18,6 +18,8 @@ use regex::Regex;
 
 use crate::bgp_client::BGPClient;
 
+pub const SECS_PER_SCAN_RESULTS: u64 = 15;
+
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub enum AddressState {
 	Untested,
@@ -106,7 +108,6 @@ impl AddressState {
 
 #[derive(Hash, PartialEq, Eq)]
 pub enum U64Setting {
-	ConnsPerSec,
 	RunTimeout,
 	WasGoodTimeout,
 	RescanInterval(AddressState),
@@ -172,7 +173,6 @@ impl Store {
 				} }
 			}
 			let mut u64s = HashMap::with_capacity(AddressState::get_count() as usize + 4);
-			u64s.insert(U64Setting::ConnsPerSec, try_read!(l, u64));
 			u64s.insert(U64Setting::RunTimeout, try_read!(l, u64));
 			u64s.insert(U64Setting::WasGoodTimeout, try_read!(l, u64));
 			u64s.insert(U64Setting::MinProtocolVersion, try_read!(l, u64));
@@ -194,10 +194,9 @@ impl Store {
 			future::ok((u64s, try_read!(l, Regex)))
 		}).or_else(|_| -> future::FutureResult<(HashMap<U64Setting, u64>, Regex), ()> {
 			let mut u64s = HashMap::with_capacity(15);
-			u64s.insert(U64Setting::ConnsPerSec, 10);
 			u64s.insert(U64Setting::RunTimeout, 120);
 			u64s.insert(U64Setting::WasGoodTimeout, 21600);
-			u64s.insert(U64Setting::RescanInterval(AddressState::Untested), 0);
+			u64s.insert(U64Setting::RescanInterval(AddressState::Untested), 1);
 			u64s.insert(U64Setting::RescanInterval(AddressState::LowBlockCount), 3600);
 			u64s.insert(U64Setting::RescanInterval(AddressState::HighBlockCount), 7200);
 			u64s.insert(U64Setting::RescanInterval(AddressState::LowVersion), 21600);
@@ -386,8 +385,7 @@ impl Store {
 	pub fn save_data(&'static self) -> impl Future<Item=(), Error=()> {
 		let settings_file = self.store.clone() + "/settings";
 		let settings_future = File::create(settings_file.clone() + ".tmp").and_then(move |f| {
-			let settings_string = format!("{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
-				self.get_u64(U64Setting::ConnsPerSec),
+			let settings_string = format!("{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
 				self.get_u64(U64Setting::RunTimeout),
 				self.get_u64(U64Setting::WasGoodTimeout),
 				self.get_u64(U64Setting::MinProtocolVersion),
@@ -529,18 +527,17 @@ impl Store {
 	}
 
 	pub fn get_next_scan_nodes(&self) -> Vec<SocketAddr> {
-		let results = 30 * self.get_u64(U64Setting::ConnsPerSec) as usize;
-		let per_bucket_results = results / (AddressState::get_count() as usize);
-		let mut res = Vec::with_capacity(results);
+		let mut res = Vec::with_capacity(128);
 		let cur_time = Instant::now();
 
 		{
 			let mut nodes = self.nodes.write().unwrap();
 			for (idx, state_nodes) in nodes.state_next_scan.iter_mut().enumerate() {
-				let cmp_time = cur_time - Duration::from_secs(self.get_u64(U64Setting::RescanInterval(AddressState::from_num(idx as u8).unwrap())));
-				let split_point = cmp::min(cmp::min(results - res.len(), (per_bucket_results * (idx + 1)) - res.len()),
-						state_nodes.binary_search_by(|a| a.0.cmp(&cmp_time)).unwrap_or_else(|idx| idx));
-				let mut new_nodes = state_nodes.split_off(split_point);
+				let rescan_interval = cmp::max(self.get_u64(U64Setting::RescanInterval(AddressState::from_num(idx as u8).unwrap())), 1);
+				let cmp_time = cur_time - Duration::from_secs(rescan_interval);
+				let split_point = cmp::min(SECS_PER_SCAN_RESULTS * state_nodes.len() as u64 / rescan_interval,
+						state_nodes.binary_search_by(|a| a.0.cmp(&cmp_time)).unwrap_or_else(|idx| idx) as u64);
+				let mut new_nodes = state_nodes.split_off(split_point as usize);
 				mem::swap(&mut new_nodes, state_nodes);
 				for (_, node) in new_nodes.drain(..) {
 					res.push(node);

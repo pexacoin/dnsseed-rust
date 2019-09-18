@@ -91,7 +91,6 @@ pub fn read(store: &'static Store, printer: &'static Printer, bgp_client: Arc<BG
 			} }
 		}
 		match get_next_chunk!() {
-			"c" => store.set_u64(U64Setting::ConnsPerSec, try_parse_next_chunk!(u64)),
 			"t" => store.set_u64(U64Setting::RunTimeout, try_parse_next_chunk!(u64)),
 			"v" => store.set_u64(U64Setting::MinProtocolVersion, try_parse_next_chunk!(u64)),
 			"w" => store.set_u64(U64Setting::WasGoodTimeout, try_parse_next_chunk!(u64)),
