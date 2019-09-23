@@ -210,7 +210,8 @@ impl Peer {
 					relay: false,
 				}));
 				println!("Until death do us part.... :|");
-				std::process:exit(0);
+				::std::process::exit(0);
+
 				future::ok((sender, read))
 			})
 		.or_else(move |_| {
