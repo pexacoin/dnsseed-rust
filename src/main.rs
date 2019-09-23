@@ -309,6 +309,7 @@ fn make_trusted_conn(trusted_sockaddr: SocketAddr, bgp_client: Arc<BGPClient>) {
 		let mut starting_height = 0;
 		TimeoutStream::new_persistent(trusted_read, Duration::from_secs(600)).map_err(|_| { () }).for_each(move |msg| {
 			if START_SHUTDOWN.load(Ordering::Relaxed) {
+				println!("Failing here");
 				return future::err(());
 			}
 			match msg {
@@ -316,6 +317,7 @@ fn make_trusted_conn(trusted_sockaddr: SocketAddr, bgp_client: Arc<BGPClient>) {
 					if let Err(_) = trusted_write.try_send(NetworkMessage::Verack) {
 						return future::err(())
 					}
+					println!("Starting Height: {:#?}", ver.start_height);
 					starting_height = ver.start_height;
 				},
 				Some(NetworkMessage::Verack) => {
