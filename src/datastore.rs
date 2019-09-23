@@ -211,7 +211,7 @@ impl Store {
 			u64s.insert(U64Setting::RescanInterval(AddressState::Good), 1800);
 			u64s.insert(U64Setting::RescanInterval(AddressState::WasGood), 1800);
 			u64s.insert(U64Setting::RescanInterval(AddressState::EvilNode), 315360000);
-			u64s.insert(U64Setting::MinProtocolVersion, 70002);
+			u64s.insert(U64Setting::MinProtocolVersion, 70025);
 			future::ok((u64s, Regex::new(".*").unwrap()))
 		});
 

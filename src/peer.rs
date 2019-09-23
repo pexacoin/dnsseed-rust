@@ -5,7 +5,6 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use bitcoin::consensus::encode;
 use bitcoin::consensus::encode::{Decodable, Encodable};
 use bitcoin::network::address::Address;
-use bitcoin::network::constants::Network;
 use bitcoin::network::message::{RawNetworkMessage, NetworkMessage};
 use bitcoin::network::message_network::VersionMessage;
 
@@ -19,6 +18,8 @@ use tokio::timer::Delay;
 use futures::sync::mpsc;
 
 use crate::printer::Printer;
+
+const PCH_MESSAGE_START: u32 = 0x41584550;
 
 struct BytesCoder<'a>(&'a mut bytes::BytesMut);
 impl<'a> std::io::Write for BytesCoder<'a> {
@@ -43,6 +44,7 @@ impl<'a> std::io::Read for BytesDecoder<'a> {
 	}
 }
 
+
 struct MsgCoder<'a>(&'a Printer);
 impl<'a> codec::Decoder for MsgCoder<'a> {
 	type Item = Option<NetworkMessage>;
@@ -56,11 +58,11 @@ impl<'a> codec::Decoder for MsgCoder<'a> {
 		match RawNetworkMessage::consensus_decode(&mut decoder) {
 			Ok(res) => {
 				decoder.buf.advance(decoder.pos);
-				if res.magic == Network::Bitcoin.magic() {
+				if res.magic == PCH_MESSAGE_START {
 					Ok(Some(Some(res.payload)))
 				} else {
 					Err(encode::Error::UnexpectedNetworkMagic {
-						expected: Network::Bitcoin.magic(),
+						expected: PCH_MESSAGE_START,
 						actual: res.magic
 					})
 				}
@@ -88,7 +90,7 @@ impl<'a> codec::Encoder for MsgCoder<'a> {
 
 	fn encode(&mut self, msg: NetworkMessage, res: &mut bytes::BytesMut) -> Result<(), std::io::Error> {
 		if let Err(_) = (RawNetworkMessage {
-			magic: Network::Bitcoin.magic(),
+			magic: PCH_MESSAGE_START,
 			payload: msg,
 		}.consensus_encode(&mut BytesCoder(res))) {
 			//XXX
@@ -197,13 +199,13 @@ impl Peer {
 						future::err(())
 					}));
 				let _ = sender.try_send(NetworkMessage::Version(VersionMessage {
-					version: 70015,
+					version: 70025,
 					services: (1 << 3), // NODE_WITNESS
 					timestamp: SystemTime::now().duration_since(UNIX_EPOCH).expect("time > 1970").as_secs() as i64,
 					receiver: Address::new(&addr, 0),
 					sender: Address::new(&"0.0.0.0:0".parse().unwrap(), 0),
 					nonce: 0xdeadbeef,
-					user_agent: "/rust-bitcoin:0.18/bluematt-tokio-client:0.1/".to_string(),
+					user_agent: "/pexacoin:0.1.0/".to_string(),
 					start_height: 0,
 					relay: false,
 				}));

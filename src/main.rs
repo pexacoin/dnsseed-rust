@@ -254,7 +254,7 @@ fn poll_dnsseeds(bgp_client: Arc<BGPClient>) {
 		let store = unsafe { DATA_STORE.as_ref().unwrap() };
 
 		let mut new_addrs = 0;
-		for seed in ["seed.bitcoin.sipa.be", "dnsseed.bitcoin.dashjr.org", "seed.bitcoinstats.com", "seed.bitcoin.jonasschnelli.ch", "seed.btc.petertodd.org", "seed.bitcoin.sprovoost.nl", "dnsseed.emzy.de"].iter() {
+		for seed in ["dnsseeds.pexaproject.com"].iter() {
 			new_addrs += store.add_fresh_addrs((*seed, 8333u16).to_socket_addrs().unwrap_or(Vec::new().into_iter()));
 			new_addrs += store.add_fresh_addrs((("x9.".to_string() + seed).as_str(), 8333u16).to_socket_addrs().unwrap_or(Vec::new().into_iter()));
 		}
