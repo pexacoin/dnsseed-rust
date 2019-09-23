@@ -304,6 +304,7 @@ fn make_trusted_conn(trusted_sockaddr: SocketAddr, bgp_client: Arc<BGPClient>) {
 	let printer = unsafe { PRINTER.as_ref().unwrap() };
 	let trusted_peer = Peer::new(trusted_sockaddr.clone(), unsafe { TOR_PROXY.as_ref().unwrap() }, Duration::from_secs(600), printer);
 	let bgp_reload = Arc::clone(&bgp_client);
+	printer.add_line("Attempting to make connection with trusted peer.".to_string(), false);
 	tokio::spawn(trusted_peer.and_then(move |(mut trusted_write, trusted_read)| {
 		printer.add_line("Connected to local peer".to_string(), false);
 		let mut starting_height = 0;
