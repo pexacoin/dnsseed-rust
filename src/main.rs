@@ -14,12 +14,12 @@ use std::net::{SocketAddr, ToSocketAddrs};
 
 use bitcoin_hashes::sha256d;
 
-use bitcoin::blockdata::block::Block;
-use bitcoin::blockdata::constants::genesis_block;
-use bitcoin::network::constants::Network;
-use bitcoin::network::message::NetworkMessage;
-use bitcoin::network::message_blockdata::{GetHeadersMessage, Inventory, InvType};
-use bitcoin::util::hash::BitcoinHash;
+use pexacoin::blockdata::block::Block;
+use pexacoin::blockdata::constants::genesis_block;
+use pexacoin::network::constants::Network;
+use pexacoin::network::message::NetworkMessage;
+use pexacoin::network::message_blockdata::{GetHeadersMessage, Inventory, InvType};
+use pexacoin::util::hash::BitcoinHash;
 
 use printer::{Printer, Stat};
 use peer::Peer;
@@ -83,7 +83,7 @@ pub fn scan_node(scan_time: Instant, node: SocketAddr, manual: bool) {
 	tokio::spawn(peer.and_then(move |(mut write, read)| {
 		TimeoutStream::new_timeout(read, scan_time + Duration::from_secs(store.get_u64(U64Setting::RunTimeout))).map_err(move |err| {
 			match err {
-				bitcoin::consensus::encode::Error::UnrecognizedNetworkCommand(ref msg) => {
+				pexacoin::consensus::encode::Error::UnrecognizedNetworkCommand(ref msg) => {
 					// If we got here, we hit one of the explicitly disallowed messages indicating
 					// a bogus "node".
 					let mut state_lock = err_peer_state.lock().unwrap();
@@ -255,8 +255,8 @@ fn poll_dnsseeds(bgp_client: Arc<BGPClient>) {
 
 		let mut new_addrs = 0;
 		for seed in ["dnsseeds.pexaproject.com"].iter() {
-			new_addrs += store.add_fresh_addrs((*seed, 8235u16).to_socket_addrs().unwrap_or(Vec::new().into_iter()));
-			new_addrs += store.add_fresh_addrs((("x9.".to_string() + seed).as_str(), 8235u16).to_socket_addrs().unwrap_or(Vec::new().into_iter()));
+			new_addrs += store.add_fresh_addrs((*seed, 8333u16).to_socket_addrs().unwrap_or(Vec::new().into_iter()));
+			new_addrs += store.add_fresh_addrs((("x9.".to_string() + seed).as_str(), 8333u16).to_socket_addrs().unwrap_or(Vec::new().into_iter()));
 		}
 		printer.add_line(format!("Added {} new addresses from other DNS seeds", new_addrs), false);
 		Delay::new(Instant::now() + Duration::from_secs(60)).then(|_| {

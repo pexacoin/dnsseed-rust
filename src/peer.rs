@@ -2,11 +2,11 @@ use std::cmp;
 use std::net::{SocketAddr, IpAddr};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use bitcoin::consensus::encode;
-use bitcoin::consensus::encode::{Decodable, Encodable};
-use bitcoin::network::address::Address;
-use bitcoin::network::message::{RawNetworkMessage, NetworkMessage};
-use bitcoin::network::message_network::VersionMessage;
+use pexacoin::consensus::encode;
+use pexacoin::consensus::encode::{Decodable, Encodable};
+use pexacoin::network::address::Address;
+use pexacoin::network::message::{RawNetworkMessage, NetworkMessage};
+use pexacoin::network::message_network::VersionMessage;
 
 use tokio::prelude::*;
 use tokio::codec;

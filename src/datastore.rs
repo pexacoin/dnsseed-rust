@@ -5,7 +5,7 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::time::{Duration, Instant};
 use std::io::{BufRead, BufReader};
 
-use bitcoin::network::address::Address;
+use pexacoin::network::address::Address;
 
 use rand::thread_rng;
 use rand::seq::{SliceRandom, IteratorRandom};
