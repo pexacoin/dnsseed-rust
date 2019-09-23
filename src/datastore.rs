@@ -460,7 +460,7 @@ impl Store {
 							for j in 0..64 {
 								if i & (1 << j) != 0 {
 									let set_ref = &nodes.good_node_services[j];
-									for a in set_ref.iter().filter(|e| e.port() == 8333) {
+									for a in set_ref.iter().filter(|e| e.port() == 8235) {
 										add_addr!(a);
 									}
 									break;
@@ -479,7 +479,7 @@ impl Store {
 									}
 								}
 							}
-							for a in first_set.unwrap().intersection(&second_set.unwrap()).filter(|e| e.port() == 8333) {
+							for a in first_set.unwrap().intersection(&second_set.unwrap()).filter(|e| e.port() == 8235) {
 								add_addr!(a);
 							}
 						} else {
@@ -498,7 +498,7 @@ impl Store {
 									}
 								}
 							}
-							for a in intersection_set_ref.unwrap().iter().filter(|e| e.port() == 8333) {
+							for a in intersection_set_ref.unwrap().iter().filter(|e| e.port() == 8235) {
 								add_addr!(a);
 							}
 						}
